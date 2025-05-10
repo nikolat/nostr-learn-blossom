@@ -11,6 +11,7 @@
 	let isInProcess: boolean = $state(false);
 
 	const deleteFileExec = async () => {
+		fileDeleteResponse = undefined;
 		const nostr = window.nostr;
 		if (nostr === undefined) {
 			return;

@@ -29,6 +29,7 @@
 	});
 
 	const uploadFileExec = async () => {
+		fileUploadResponse = undefined;
 		if (filesToUpload === undefined || filesToUpload.length === 0) {
 			return;
 		}
