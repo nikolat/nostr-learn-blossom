@@ -1,6 +1,6 @@
 # nostr-learn-blossom
 
-Just a [Blossom](https://github.com/hzrd149/blossom) practise.
+Just a [Blossom](https://github.com/hzrd149/blossom) practice.
 
 ## Libraries, frameworks, services and protocols
 
