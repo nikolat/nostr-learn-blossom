@@ -62,7 +62,7 @@
 		if (npub.length === 0) {
 			return [];
 		}
-		let dr: nip19.DecodeResult;
+		let dr: nip19.DecodedResult;
 		try {
 			dr = nip19.decode(npub);
 		} catch (error) {
