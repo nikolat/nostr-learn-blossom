@@ -1,7 +1,6 @@
 <script lang="ts">
-	import type { EventTemplate } from 'nostr-tools/pure';
-	import { BlossomClient } from 'blossom-client-sdk/client';
-	import type { BlobDescriptor } from 'blossom-client-sdk';
+	import { BlossomClient, type BlobDescriptor } from 'nostr-tools/nipb7';
+	import type { Signer } from 'nostr-tools/signer';
 
 	let {
 		uploaderURLs,
@@ -17,27 +16,19 @@
 
 	const listFilesExec = async () => {
 		fileListResponse = undefined;
-		const nostr = window.nostr;
-		if (nostr === undefined) {
+		const signer: Signer | undefined = window.nostr;
+		if (signer === undefined) {
 			return;
 		}
-		const signer = async (e: EventTemplate) => {
-			return await nostr.signEvent(e);
-		};
 		isInProcess = true;
 		console.info('file listing...');
 		try {
-			const pubkey = await nostr.getPublicKey();
-			const auth = await BlossomClient.createListAuth(signer);
-			fileListResponse = await BlossomClient.listBlobs(targetUrlToList, pubkey, {
-				auth
-			});
+			const client = new BlossomClient(targetUrlToList, signer);
+			fileListResponse = await client.list();
+			console.info('file listing complete');
 		} catch (error) {
 			console.error(error);
-			isInProcess = false;
-			return;
 		}
-		console.info('file listing complete');
 		isInProcess = false;
 	};
 

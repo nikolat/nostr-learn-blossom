@@ -1,7 +1,6 @@
 <script lang="ts">
-	import type { EventTemplate } from 'nostr-tools/pure';
-	import { BlossomClient } from 'blossom-client-sdk/client';
-	import type { BlobDescriptor } from 'blossom-client-sdk';
+	import { BlossomClient, type BlobDescriptor } from 'nostr-tools/nipb7';
+	import type { Signer } from 'nostr-tools/signer';
 
 	interface FileUploadResponse extends BlobDescriptor {
 		nip94?: Array<[string, string]> | undefined;
@@ -29,14 +28,19 @@
 	};
 	let uploadUrl: string | undefined = $derived(getUploadUrl(fileUploadResponse));
 
-	const upload = async () => {
-		let file: File | null = getFile();
-		if (file === null) {
+	const uploadExec = async () => {
+		fileUploadResponse = undefined;
+		const signer: Signer | undefined = window.nostr;
+		const file: File | null = getFile();
+		if (signer === undefined || file === null) {
 			return;
 		}
 		isInProcess = true;
+		console.info('file uploading...');
 		try {
-			await uploadFileExec(file);
+			const client = new BlossomClient(targetUrlToUpload, signer);
+			fileUploadResponse = await client.uploadFile(file);
+			console.info('file uploading complete');
 		} catch (error) {
 			console.error(error);
 		}
@@ -55,20 +59,6 @@
 			return null;
 		}
 		return file;
-	};
-
-	const uploadFileExec = async (file: File) => {
-		const nostr = window.nostr;
-		if (nostr === undefined) {
-			return;
-		}
-		const signer = async (e: EventTemplate) => {
-			return await nostr.signEvent(e);
-		};
-		console.info('file uploading...');
-		const auth = await BlossomClient.createUploadAuth(signer, file);
-		fileUploadResponse = await BlossomClient.uploadBlob(targetUrlToUpload, file, { auth });
-		console.info('file uploading complete');
 	};
 </script>
 
@@ -96,7 +86,7 @@
 		<dd>
 			<button
 				id="upload"
-				onclick={upload}
+				onclick={uploadExec}
 				disabled={filesToUpload === undefined || filesToUpload.length === 0 || isInProcess}
 				>Upload</button
 			>

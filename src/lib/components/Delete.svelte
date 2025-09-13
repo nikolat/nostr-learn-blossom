@@ -1,37 +1,28 @@
 <script lang="ts">
-	import type { EventTemplate } from 'nostr-tools/pure';
-	import { BlossomClient } from 'blossom-client-sdk/client';
+	import { BlossomClient } from 'nostr-tools/nipb7';
+	import type { Signer } from 'nostr-tools/signer';
 
 	let {
 		uploaderURLs,
 		targetUrlToDelete,
 		fileHashToDelete
 	}: { uploaderURLs: string[]; targetUrlToDelete: string; fileHashToDelete: string } = $props();
-	let fileDeleteResponse: boolean | undefined = $state();
 	let isInProcess: boolean = $state(false);
 
 	const deleteFileExec = async () => {
-		fileDeleteResponse = undefined;
-		const nostr = window.nostr;
-		if (nostr === undefined) {
+		const signer: Signer | undefined = window.nostr;
+		if (signer === undefined) {
 			return;
 		}
-		const signer = async (e: EventTemplate) => {
-			return await nostr.signEvent(e);
-		};
 		isInProcess = true;
 		console.info('file deleting...');
 		try {
-			const auth = await BlossomClient.createDeleteAuth(signer, fileHashToDelete);
-			fileDeleteResponse = await BlossomClient.deleteBlob(targetUrlToDelete, fileHashToDelete, {
-				auth
-			});
+			const client = new BlossomClient(targetUrlToDelete, signer);
+			await client.delete(fileHashToDelete);
+			console.info('file deleting complete');
 		} catch (error) {
 			console.error(error);
-			isInProcess = false;
-			return;
 		}
-		console.info('file deleting complete');
 		isInProcess = false;
 	};
 </script>
@@ -67,12 +58,6 @@
 				onclick={deleteFileExec}
 				disabled={fileHashToDelete.length === 0 || isInProcess}>Delete</button
 			>
-		</dd>
-		<dt>Result</dt>
-		<dd>
-			<pre><code
-					>{#if fileDeleteResponse !== undefined}{fileDeleteResponse}{/if}</code
-				></pre>
 		</dd>
 	</dl>
 </fieldset>
