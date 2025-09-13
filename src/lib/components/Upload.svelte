@@ -12,53 +12,63 @@
 	let filesToUpload: FileList | undefined = $state();
 	let isInProcess: boolean = $state(false);
 	let fileUploadResponse: FileUploadResponse | undefined = $state();
-	let uploadUrl: string | undefined = $derived.by(() => {
-		if (fileUploadResponse === undefined) {
+	const getUploadUrl = (fur: FileUploadResponse | undefined): string | undefined => {
+		if (fur === undefined) {
 			return undefined;
 		}
-		if (fileUploadResponse.nip94 === undefined) {
-			if (URL.canParse(fileUploadResponse.url)) {
-				return fileUploadResponse.url;
+		if (fur.nip94 === undefined) {
+			if (URL.canParse(fur.url)) {
+				return fur.url;
 			} else {
 				return undefined;
 			}
 		}
-		const urlRoot = fileUploadResponse.url;
-		const urlNip94 = fileUploadResponse.nip94.find((tag) => tag[0] === 'url')?.at(1) ?? '';
+		const urlRoot = fur.url;
+		const urlNip94 = fur.nip94.find((tag) => tag[0] === 'url')?.at(1) ?? '';
 		return URL.canParse(urlNip94) ? urlNip94 : URL.canParse(urlRoot) ? urlRoot : undefined;
-	});
+	};
+	let uploadUrl: string | undefined = $derived(getUploadUrl(fileUploadResponse));
 
-	const uploadFileExec = async () => {
-		fileUploadResponse = undefined;
-		if (filesToUpload === undefined || filesToUpload.length === 0) {
+	const upload = async () => {
+		let file: File | null = getFile();
+		if (file === null) {
 			return;
 		}
-		const nostr = window.nostr;
-		if (nostr === undefined) {
-			return;
+		isInProcess = true;
+		try {
+			await uploadFileExec(file);
+		} catch (error) {
+			console.error(error);
+		}
+		isInProcess = false;
+	};
+
+	const getFile = (): File | null => {
+		if (filesToUpload === undefined || filesToUpload.length === 0) {
+			return null;
 		}
 		let file: File | undefined;
 		for (const f of filesToUpload) {
 			file = f;
 		}
 		if (file === undefined) {
+			return null;
+		}
+		return file;
+	};
+
+	const uploadFileExec = async (file: File) => {
+		const nostr = window.nostr;
+		if (nostr === undefined) {
 			return;
 		}
 		const signer = async (e: EventTemplate) => {
 			return await nostr.signEvent(e);
 		};
-		isInProcess = true;
 		console.info('file uploading...');
-		try {
-			const auth = await BlossomClient.createUploadAuth(signer, file);
-			fileUploadResponse = await BlossomClient.uploadBlob(targetUrlToUpload, file, { auth });
-		} catch (error) {
-			console.error(error);
-			isInProcess = false;
-			return;
-		}
+		const auth = await BlossomClient.createUploadAuth(signer, file);
+		fileUploadResponse = await BlossomClient.uploadBlob(targetUrlToUpload, file, { auth });
 		console.info('file uploading complete');
-		isInProcess = false;
 	};
 </script>
 
@@ -86,7 +96,7 @@
 		<dd>
 			<button
 				id="upload"
-				onclick={uploadFileExec}
+				onclick={upload}
 				disabled={filesToUpload === undefined || filesToUpload.length === 0 || isInProcess}
 				>Upload</button
 			>
@@ -96,7 +106,7 @@
 			<button
 				class="copy"
 				onclick={() => {
-					navigator.clipboard.writeText(fileUploadResponse?.url ?? '');
+					navigator.clipboard.writeText(uploadUrl ?? '');
 				}}
 				title="Copy to clipboard"
 				aria-label="Copy to clipboard"><svg><use xlink:href="./copy.svg#copy"></use></svg></button
