@@ -11,6 +11,7 @@
 	let filesToUpload: FileList | undefined = $state();
 	let isInProcess: boolean = $state(false);
 	let fileUploadResponse: FileUploadResponse | undefined = $state();
+	let errorMessage: string | undefined = $state();
 	const getUploadUrl = (fur: FileUploadResponse | undefined): string | undefined => {
 		if (fur === undefined) {
 			return undefined;
@@ -36,6 +37,7 @@
 			return;
 		}
 		isInProcess = true;
+		errorMessage = undefined;
 		console.info('file uploading...');
 		try {
 			const client = new BlossomClient(targetUrlToUpload, signer);
@@ -43,6 +45,7 @@
 			console.info('file uploading complete');
 		} catch (error) {
 			console.error(error);
+			errorMessage = (error as Error).message;
 		}
 		isInProcess = false;
 	};
@@ -129,7 +132,11 @@
 		<dd>
 			<details>
 				<summary>Result</summary>
-				<pre><code>{JSON.stringify(fileUploadResponse, undefined, 2) ?? ''}</code></pre>
+				{#if errorMessage === undefined}
+					<pre><code>{JSON.stringify(fileUploadResponse, undefined, 2) ?? ''}</code></pre>
+				{:else}
+					<pre class="error">{errorMessage}</pre>
+				{/if}
 			</details>
 		</dd>
 	</dl>
@@ -148,5 +155,8 @@
 	}
 	button.copy:active > svg {
 		fill: yellow;
+	}
+	.error {
+		color: red;
 	}
 </style>

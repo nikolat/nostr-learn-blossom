@@ -12,15 +12,17 @@
 		fileHashToDelete: string;
 	} = $props();
 	let fileListResponse: BlobDescriptor[] | undefined = $state();
+	let errorMessage: string | undefined = $state();
 	let isInProcess: boolean = $state(false);
 
 	const listFilesExec = async () => {
-		fileListResponse = undefined;
 		const signer: Signer | undefined = window.nostr;
 		if (signer === undefined) {
 			return;
 		}
 		isInProcess = true;
+		fileListResponse = undefined;
+		errorMessage = undefined;
 		console.info('file listing...');
 		try {
 			const client = new BlossomClient(targetUrlToList, signer);
@@ -28,6 +30,7 @@
 			console.info('file listing complete');
 		} catch (error) {
 			console.error(error);
+			errorMessage = (error as Error).message;
 		}
 		isInProcess = false;
 	};
@@ -98,7 +101,11 @@
 			{/if}
 			<details>
 				<summary>Result</summary>
-				<pre><code>{JSON.stringify(fileListResponse, undefined, 2) ?? ''}</code></pre>
+				{#if errorMessage === undefined}
+					<pre><code>{JSON.stringify(fileListResponse, undefined, 2) ?? ''}</code></pre>
+				{:else}
+					<pre class="error">{errorMessage}</pre>
+				{/if}
 			</details>
 		</dd>
 	</dl>
@@ -130,5 +137,8 @@
 		position: absolute;
 		top: 0;
 		right: 0;
+	}
+	.error {
+		color: red;
 	}
 </style>
