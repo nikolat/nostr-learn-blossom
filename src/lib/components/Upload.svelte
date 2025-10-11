@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { BlossomClient, type BlobDescriptor } from 'nostr-tools/nipb7';
 	import type { Signer } from 'nostr-tools/signer';
+	import * as mediabunny from 'mediabunny';
 
 	interface FileUploadResponse extends BlobDescriptor {
 		nip94?: Array<[string, string]> | undefined;
@@ -32,12 +33,15 @@
 	const uploadExec = async () => {
 		fileUploadResponse = undefined;
 		const signer: Signer | undefined = window.nostr;
-		const file: File | null = getFile();
+		let file: File | null = getFile();
 		if (signer === undefined || file === null) {
 			return;
 		}
 		isInProcess = true;
 		errorMessage = undefined;
+		if (/^(video|audio)/.test(file.type)) {
+			file = await compress(file);
+		}
 		console.info('file uploading...');
 		try {
 			const client = new BlossomClient(targetUrlToUpload, signer);
@@ -61,6 +65,50 @@
 		if (file === undefined) {
 			return null;
 		}
+		return file;
+	};
+
+	// https://gihyo.jp/article/2025/10/misskey-20
+	const compress = async (source: File): Promise<File> => {
+		// 入力を準備
+		const input = new mediabunny.Input({
+			source: new mediabunny.BlobSource(source),
+			formats: mediabunny.ALL_FORMATS
+		});
+
+		// 出力を準備。今回はmp4で出力
+		const output = new mediabunny.Output({
+			target: new mediabunny.BufferTarget(),
+			format: new mediabunny.Mp4OutputFormat()
+		});
+
+		// 変換を行うインスタンス。今回はビットレートのクオリティをLOWにすることで、圧縮を行うように指定
+		const conversion = await mediabunny.Conversion.init({
+			input,
+			output,
+			video: {
+				bitrate: mediabunny.QUALITY_LOW
+			},
+			audio: {
+				bitrate: mediabunny.QUALITY_LOW
+			}
+		});
+
+		// 処理の進捗が更新されたときのコールバック。進捗率は 0.0~1.0 で渡される
+		conversion.onProgress = (p) => console.info(`${p * 100}%`);
+
+		// 圧縮処理を実行 (注: 時間がかかる場合あり)
+		console.info('file converting...');
+		await conversion.execute();
+		console.info('file converting complete');
+
+		// 圧縮したデータを返す
+		const file = new File([output.target.buffer!], source.name, { type: output.format.mimeType });
+
+		const getSize = (file: File): number => Math.round((100 * file.size) / 1024 / 1024) / 100;
+		console.info(`original file size: ${getSize(source)} MB`);
+		console.info(`compressed file size: ${getSize(file)} MB`);
+
 		return file;
 	};
 </script>
